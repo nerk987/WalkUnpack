@@ -8,80 +8,48 @@ Files:
 
 ## Introduction
 
-It's often convenient to develop a walk cycle where the character walks on the spot.
+It’s common to develop a walk cycle so that the character walks on the spot. Let’s call this a ‘static’ walk cycle. For games development, that’s generally all you need. For animations and films, this is not ideal. To use it the root bone must be animated to smoothly move at the walking speed, and it’s hard to avoid foot slipping. Customising the animation is also difficult as the keyframes are relative to the moving root bone.
+Developing the walk cycle as a ‘progressive’ cycle alleviates some of the issues, but there are still downsides.
+This addon aims to treat the static walkcycle as a motion template which can be unpacked and applied to the motion of the root bone of the character.
 
 ## Installation
-The 'triangulate addon is installed using the standard blender method. From the Addon tab on User Preferences dialog, choose 'Install from file'. Navigate to the 'Triangulate.py' file, and select it. You can then enable the addon via the check box.
 
-## Pre-work
-The 'triangulate' addon is just one small part of a larger workflow. This section lists some of the other tasks required to do motion capture. There may be many ways to achieve the same outcome.
+Download the ZIP file the link above. Open Blender and go to Preferences then the Add-ons tab.
+Use the Install Addon button to select the txa_ant.zip file. Once installed, enable the WalkUnpack addon.
+## The Aim of the Addon
+The idea is that you animate the root bone of the character to follow the required path. The addon will create a new action and will then take keyframes from the static walk cycle and place them at the appropriate intervals for the speed of the root bone, and it will add the offset of the root bone from it’s starting position to the keyframes of control bones like the feet IK targets and the torso. When it’s finished, the keyframes of the root bone are removed.
 
-- Choose two or more cameras to film the mocap actor. They should be able to film at the same framerate, but can be different in most other ways. 
-- Determine the actual lens focal length and crop factor. There are lots of ways of doing this, and most tutorials on motion tracking in blender will at least mention this.
-- Optionally film calibration markers, and then film the actions of a mocap actor (preferably wearing tracking markers of some kind) with two or more cameras. Note the camera must have the same framerate. The cameras should be placed so that they view the scene from a significantly different angle
-- Edit the two or more video files to be time synchronized. (And probably to contain only the relevant parts of calibration and actions)
-- Load the two or more video files into 'Movieclips' in Blender. Give each one a distictive name (eg Camera1)
-- Create a matching camera in 3D space for each Movieclip. Each camera must have exactly the same location, rotation, and sensor and lens settings as the real cameras used to produce the Movieclip video. This is the hard part, and the triangulate addon doesn't help with this! See the later section on Camera Calibration for some suggestions on how to do this.
-- Name each 3D camera object exactly the same as it's matching Movieclip. For example, if the first MovieClip is named "Camera1", then the matching 3D camera object name should be "Camera1". If the Movieclip name is "Camera1.MOV", then the camera name should be "Camera1.MOV".
-- For each Movieclip, use Blender's impressive tracking features to track each Mocap marker for the duration of the action being recorded. Each track should be given a distinct name. For example, the marker on the actor's left knee could be called "Knee.L". Make sure that the same track name is given in each Movieclip for each track on the same physical marker. For example, if "Knee.L" is used for the track name for the marker on the left knee on Camera1, then "Knee.L" must be the name given to the track on Camera2 for that same marker. Note that it doesn't matter which Movieclip object the track is attached to - it can be the default camera object or you can add an object like 'Actor'.
-Note that we are just doing 2D tracking for the 'Triangulate' addon, no camera solve is required (unless you use this for camera calibration - see the later section)
-- For each track name created in the two or more Movieclips, create an Empty in the 3D viewport with the same name. For example, if you called the actor's left knee "Knee.L" in movieclips "Camera1" and "Camera2", then you need to create an empty called "Knee.L". This tells the 'triangulate' addon to look for tracks called "Knee.L" in every Movieclip in the project, and if it finds this track in at least to Movieclips, it will add location keyframes to the empty.
+## Usage
 
-## Running the Addon
-Finally, the hard work is done! Set the start and end frames to the range that you want the empties animated.
+### Gather walk cycle information
+I’ll assume you character already has a ‘static’ walk cycle. The walk cycle will have a start and an end frame for the walk cycle motion, and the keyframes on the first frame should be the same as the keyframes on the last frame. You will also need to determine the distance that the character must travel in that frame range so that the feet have no slip. This can be a little tricky to find in some cases, but it’s often twice the distance between the feet IK bones in the traditional ‘contact’ pose.
+Determine the root bone and the control bones
+Your character will likely have a ‘master’, or ‘root’ bone. Also determine the ‘Control Bones’ of the character that are effectively parented to the root bone. Typically, these will be the feet IK bones and the torso bone, but may in some cases include the eye target bone and other miscellaneous controls. 
+### Animate the root bone
+For your armature, select the action that requires walk cycle keyframes, or start a new action. Animate the root bone of the character to follow the required path of the character. Typically you would animate at a speed that matches the walk cycle speed, although the addon will compensate with keyframe spacing if not. At this time, the addon requires the root bone animation be done in keyframes, not constraints, so if you use a curve animation or other constraint you must bake that action to keyframes prior to using the addon.
+Select the control bones, then the root bone
+Select your character’s armature in pose mode. Select all of the ‘control bones’ and then shift select the ‘root’ bone. Typically, that means the IK target bones of the feet, the torso bone and the root bone are all selected, with the root bone being the active bone.
+### Run the WalkUnpack addon 
+Look for the WalkUnpack tab on the N-Panel. In the tab. Enter the start and end frame for the static walk cycle, and the distance the walk action travels as mentioned earlier.
+There are some tick box options that are discussed a bit later. Press the ‘Bake’ button.
+Check the result
+A new action should have been created and should be active. It should be named like the previous action with a ‘_wu’ appended. This action should have no keyframes for the root bone, and progressive key frames for the rest of the model. When played, the character should walk for the whole action, but it’s likely the feet will be slipping at least a bit.
+### Revert
+The Revert button on the WalkUnpack addond tab will switch back to the previous action so that you can adjust the root bone animation if you’re not happy with the result.
+Slipping Feet and keyframe locations
+How does it all work? The addon checks the amount of root bone movement for each frame of the action. It compares that to the static walk cycle movement per frame (WalkcycleDist/(Endframe-Startframe). If they are the same for each frame, the walk cycle keyframes will be placed with the same spacing in the new action. If the root bone moves faster, the keyframes will be place more frequently. If the root bone moves slower, the keyframes will be placed less frequently.
+At this time, the addon will place the keyframes exactly on integral frames, and it doesn’t do any interpolation, so there may be a little unevenness in the motion. There is a limit to how fast you can go without things going wrong! If your walk cycle has keyframes
+If the root bone is animated in a straight line at exactly at the same speed as the walk cycle the feet shouldn’t slip significantly. If they do, double check your estimation of the walk cycle distance. If you speed up, slow down, turn, or rise and fall, then they’ll skip, but it’s easy to correct now that the keyframes are relative to the pose space. In the next section, there are some options to help with these issues.
+## Addon Options
+### Sync Speed
+If enabled, this option forces the keyframe spacing present in the static walk cycle to be repeated in the final action.
+This is useful if you are trying to keep the walk cycle at the original speed, and you have animated the root bone with this in mind. Without the sync speed option, some keyframes may be a frame out here or there giving an uneven walk. However, if you haven’t animated the root bone to go at the native walk cycle speed, the feet will slip.
+### Ignore Vertical
+By default, vertical movements of the root bone are ignored when generating new keyframe spacing. This is suitable for normal walking where characters normally don’t walk faster when going up stairs for example. However, you can turn this option off if you have a spider walking up a wall, or a character climbing a ladder.
+### Prevent slip
+In some ways, I don’t think slipping feet are a big problem. When generating a new animation, you will likely have to run over the whole animation and tweak just about everything anyway, and foot position is one of those things. Still, it’s satisfying if the addon can produce nice looking results.
+This option lets you identify the keyframes in the walkcycle action that should result in a fixed location or rotation when applied along the path. This is done by using keyframe types. (If you’re not familiar with keyframe types, they don’t normally do anything, they just help you organise. I’m hi-jacking this function to identify different keyframes to the addon).
+For the static walk cycle keyframes associated with the control bones for the feet, identify the first set of keyframes where the foot contacts the ground. Change the keyframe type to ‘EXTREME’ for those keyframes. (In programming terms, this will push the keyframe value onto a stack). For every subsequent keyframe where the foot should be still, set the keyframe type to ‘JITTER’. (This will pop the value off the stack and use this value for the current keyframe). All other keyframes should be of some other type. (And will clear the stack). Be aware that the addon treats the first and last keyframes of the walk cycle as interchangeable, so it’s best to have the same type at both ends.
+The image below shows a traditional 24 frame walk cycle with keyframes for contact, down, passing and up. (or whichever version of this you prefer.) The red ‘EXTREME’ keyframes indicate the foot touching, the green ‘JITTER’ keyframes will hold both rotation and location.
 
-Go to the 3D view, and press the 'Triangulate' button on the "Misc" toolshelf tab, (or in the Object Menu). For every empty in the scene, and for every the frame from 'start' to 'end', the addon will look for tracks with matching names in each Movieclip. If it finds tracks with valid tracking information in at least two Movieclips, it will perform a triagulation calculation to determine the 3D location of the tracked marker, and will add a location keyframe to the empty. This should happen very quickly.
-
-If you scrub through the frames in the scene, the empties should move with the same motion as the Mocap actor.
-
-There should be two values in the Triangulate section of the Redo panel, labelled "Max Error", and "Average Error".
-
-If the camera calibration is perfect, the rays that are projected through the tracking points should meet exactly, and that is the point used for the keyframe. However, that's unlikely! The rays will probably miss each other by some distance. This distance is used as the error value, and the point chosen for the keyframe is the mid point of the closest distance between the rays. The "Average Error" is the average distance in blender units of all the keyframes. The "Max Error" pararmeter allows you to select the maximum error for which a keyframe is created. This give the possibility of removing outliers automatically.
-
-For each empty, a custom parameter called 'Error" is added, and a keyframe is added for every frame showing the error for that frame. You can use the graph function to trend this error for each empty, and perhaps manually delete bad keyframes.
-
-## Using the Empties
-Moving empties aren't that useful in themselves, but the idea is that you should create an armature which matches the dimensions of the mocap actor, and give the joints constraints to limit motion to feasible movements. One empty (for example the "hip" empty), or perhaps a group of three empties can determine the base location of the root or 'hip' bone using a location constraint, and the other empties can be used to target rotations is the other bones.
-
-If the bone constraints are converted to keyframes, the it should be possible to use the built in "Motion Capture" addon to clean up and retarget the motion data to the final rig.
-
-Or you can do whatever you like with them!!
-
-
-## Camera Calibration
-
-Accurate camera calibration is the biggest issue in this Mocap method. It's up to you how to do this for your application, but here are two suggestions...
-
-Method 1 - Camera tracking
-This was my original plan. I added at least 8 tracking markers to a real 3D object (a chair in my case). Before filming the Mocap actions, I had both cameras (could be more than two) film the chair being moved smoothly on at least two axies.
-When the Movieclips were imported to Blender, I used the camera tracking functions to solve the camera motion, pretending the chair (or calibration object) was still, and both cameras were moving around. Of course I had to add the camera lens and sensor data to the movieclips before solving. One movieclip at a time, I created a tracking scene and used the 'distance' scaling function on two markers to set the scene size to the real world scale, and then set the origin to one marker, the Y axis to another marker, and the X axis to a third marker. 
-
-This created a camera with the correct lens and sensor values, with approximately the correct location and rotation relative to the calibration object. I renamed the camera the same as the Movieclip, and I converted to camera tracking constraint to keyframes. I then deleted all the keyframes except for one which matched with the chair (calibration object) sitting still one the ground. I also named the action in the action editor and hit the 'F' button as the camera can be deleted when the next tracking scene is created, and this lets you get back the position easily.
-
-I repeated this for the other Movieclip. It's obviously important to use the same markers for these various scaling and axis functions so that the second camera has the correct relationship to the calibration object.
-
-This method worked but only seems accurate when the mocap actor was in the same region as the calibration object. A lot depends on the quality of the tracking and the movement of the object. It was also a fair bit of work for each camera, and would have to be repeated each time the cameras were moved.
-
-** Edit - this method is crap **
-
-Method 2
-** Edit - this method is pretty good **
-
-I plan to model the physical characteristics of the Mocap set to scale in 3D. I will then measure the actual position of the cameras in the set. I will also check that the camera's tripods are level.
-
-Then I will manually place the virtual cameras in the 3D scene. The only parameters that should need to be adjusted are the pan and tilt of the cameras, and I'll line up the actual video of the Mocap stage with the 3D model of the stage.
-
-Camera Focal Length Detection
-I've tried a few different ways to determine the focal length of the cameras I use. (Not just for this project - it's useful in all camera tracking applications).
-
-The best method I've found so far is to use the free panorama creation program 'Hugin'. There is lots of information on the net on how to use this. I then find a location where I can see two points some distance away which I know are 90 degrees from each other (eg a street corner). Using the camera's video mode (the video mode can have a very different focal length than the stills mode as the whole sensor may not be used), I try to get two or three fairly steady frames of the two distant points and as many intermediate frames as required to get an overlap.
-
-I then use blender or an external editor to extract those two or three frames to jpeg files, and use Hugin to produce a panorama, guessing the focal lenth and crop factor. You can set the preview to be equirectangular with a horizontal 
-angle of 90 degrees. If you guess correctly, the two distant points should be at the edges of the preview. Otherwise adjust your guess and try again.
-
-This method seems quite accurate. If you want to be even more accurate, do a full 360 deg panorama. Hugin can work out the exact focal length in order for the images to make a full circle. It will also work our the barrel distortion accurately, but I haven't worked if the numbers produce match Blender's method.
-
-
-
-
-
+This method requires a little bit of effort to set up but gives a lot of flexibility. For example, you can lock the location of the feet, but not the rotation and allow the foot to twist on the ground. It also allows for rigs that use the same control bone to rotate from heel to toe and for location.
