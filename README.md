@@ -3,7 +3,7 @@
 Blender 2.8
 
 Files:
-[WalkUnpack.zip](https://github.com/nerk987/WalkUnpack/releases/download/v0.1.0/WalkUnpack.zip) - the addon
+[WalkUnpack_v0_1_0.zip](https://github.com/nerk987/WalkUnpack/releases/download/v0.1.0/WalkUnpack_v0_1_0.zip) - the addon
 
 
 ## Introduction
