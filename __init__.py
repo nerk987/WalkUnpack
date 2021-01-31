@@ -27,13 +27,13 @@
 # 5. Walk the root bone animation through the range and record matrix for each frame
 # 6. Walk through fcurves, and for all relevant bones, add root bone delta to each keyframe    
 
-# version comment: V0.0.1 pre-Alpha
+# version comment: V0.1.1 Release version
 
 bl_info = {
     "name": "WalkUnpack",
     "author": "Ian Huish (nerk)",
-    "version": (0, 0, 1),
-    "blender": (2, 81, 0),
+    "version": (0, 1, 1),
+    "blender": (2, 91, 0),
     "location": "Toolshelf>WalkUnpack",
     "description": "Unpack a walk cycle",
     "warning": "",
@@ -58,14 +58,36 @@ from bpy.types import Operator, Panel, Menu
 
 
 class WUProps(bpy.types.PropertyGroup):
+    def GetActions(self, context):
+        items = []
+        if len(bpy.data.actions) > 0:
+            for action in bpy.data.actions:
+                items.append((action.name, action.name, action.name))
+        else:
+            items = [("No action","No action","No action")]
+        return items
+        
     wu_targetrig : StringProperty(name="Name of the target rig", default="")  
-    wu_start_frame : IntProperty(name="Simulation Start Frame", default=1)  
-    wu_end_frame : IntProperty(name="Simulation End Frame", default=250)  
-    wu_cycle_dist : FloatProperty(name="Distance traveled by static walk cycle", default=1.0)  
-    wu_start_cycle : IntProperty(name="Static Walk cycle Start Frame", default=1)  
-    wu_end_cycle : IntProperty(name="Static Walk cycle End Frame", default=24)  
-    wu_cyclic_action : StringProperty(name="Name of the cyclic action", default="")  
+    wu_start_frame : IntProperty(name="Limit Start of Range", description="Limit the target animation range (0 is disabled)", default=0)  
+    wu_end_frame : IntProperty(name="Limit End of ange", description="Limit the target animation range (0 is disabled)", default=0)  
+    wu_cycle_dist : FloatProperty(name="Walk Cycle Distance", description="Distance traveled by static walk cycle", default=1.0)  
+    wu_start_cycle : IntProperty(name="Walk Cycle Start Frame", description="Static Walk cycle Start Frame", default=1)  
+    wu_end_cycle : IntProperty(name="Walk Cycle End Frame",description="Static Walk cycle End Frame", default=24)  
+    # wu_cyclic_action : StringProperty(name="Name of the cyclic action", default="")  
     wu_prog_action : StringProperty(name="Name of the progressive action", default="")  
+    wu_original_action : StringProperty(name="Name of the original action", default="")  
+    wu_sync_speed : BoolProperty(name="Sync Speed", description="Copy the spacing of the cyclic action exactly", default=False)  
+    wu_ignore_z : BoolProperty(name="Ignore Vertical", description="Ignore vertical movements when calculating distance travelled", default=True)  
+    wu_prevent_slip : BoolProperty(name="Prevent Slip", description="Use keyframe types you configure to prevent foot slipping", default=False)  
+    wu_cyclic_action : EnumProperty(
+        items=GetActions,
+        name="Walk Cycle Action",
+        description="Static Walk Cycle Action",
+        default=None,
+        options={'ANIMATABLE'},
+        update=None,
+        get=None,
+        set=None)
    
 
 
@@ -91,6 +113,8 @@ class ARMATURE_PT_WalkUnpackPanel(bpy.types.Panel):
         else:
             return False
 
+
+
     def draw(self, context):
         layout = self.layout
 
@@ -98,12 +122,23 @@ class ARMATURE_PT_WalkUnpackPanel(bpy.types.Panel):
         scene = context.scene
         
         # box = layout.box()
-        layout.label(text="Main1")
-        # layout.prop(scene.WUProps, "wu_start_frame")
-        # layout.prop(scene.WUProps, "wu_end_frame")
+        layout.label(text="Walk Cycle Details")
+        layout.prop(scene.WUProps, "wu_cyclic_action", text="")
         layout.prop(scene.WUProps, "wu_start_cycle")
         layout.prop(scene.WUProps, "wu_end_cycle")
         layout.prop(scene.WUProps, "wu_cycle_dist")
+
+        layout.label(text="Animation Range")
+        layout.prop(scene.WUProps, "wu_start_frame")
+        layout.prop(scene.WUProps, "wu_end_frame")
+
+        layout.label(text="Options")
+        layout.prop(scene.WUProps, "wu_sync_speed")
+        layout.prop(scene.WUProps, "wu_ignore_z")
+        layout.prop(scene.WUProps, "wu_prevent_slip")
+        # layout.prop(scene, "WUAction")
+
+        layout.label(text="Actions")
         layout.operator('armature.walkunpack')
         layout.operator('armature.walkunpackrevert')
 
@@ -119,8 +154,7 @@ def register():
     for cls in classes:
         register_class(cls)
     bpy.types.Scene.WUProps = bpy.props.PointerProperty(type=WUProps)
-    # from . import WalkUnpack
-    # WalkUnpack.registerTypes()
+    # bpy.types.Scene.WUAction = EnumProperty(items=GetActions, description="offers....",  default="None",)
     
 
 
