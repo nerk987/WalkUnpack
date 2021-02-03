@@ -1,9 +1,9 @@
 # Blender WalkUnpack Addon
 
-Blender 2.8
+Blender 2.8 - 2.93
 
 Files:
-[WalkUnpack_v0_1_1.zip](https://github.com/nerk987/WalkUnpack/releases/download/v0.1.1/WalkUnpack_v0_1_1.zip) - the addon
+[WalkUnpack_v0_1_2.zip](https://github.com/nerk987/WalkUnpack/releases/download/v0.1.2/WalkUnpack_v0_1_2.zip) - the addon
 
 
 ## Introduction
