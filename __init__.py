@@ -27,12 +27,12 @@
 # 5. Walk the root bone animation through the range and record matrix for each frame
 # 6. Walk through fcurves, and for all relevant bones, add root bone delta to each keyframe    
 
-# version comment: V0.1.1 Release version
+# version comment: V0.1.2 released (euler issue fix)
 
 bl_info = {
     "name": "WalkUnpack",
     "author": "Ian Huish (nerk)",
-    "version": (0, 1, 1),
+    "version": (0, 1, 2),
     "blender": (2, 91, 0),
     "location": "Toolshelf>WalkUnpack",
     "description": "Unpack a walk cycle",

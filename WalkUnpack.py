@@ -19,7 +19,7 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
-# version comment: V0.1.1 Relase Version
+# version comment: V0.1.2 released (euler issue fix)
 
 import bpy
 import mathutils, os
@@ -105,6 +105,7 @@ class ARMATURE_OT_WalkUnpack(bpy.types.Operator):
             rot_mode = "XYZ"
         euler_rotation = Euler((0,0,0), rot_mode)
         rotmat = None
+        rotmat_e = None
         for fcurve in sourceaction.fcurves:
             # print(fcurve.data_path)
             if '["' + bone_name + '"]' in fcurve.data_path:
@@ -115,14 +116,22 @@ class ARMATURE_OT_WalkUnpack(bpy.types.Operator):
                     rotmat = quat_rotation.to_matrix()
                 if "_euler" in fcurve.data_path:
                     euler_rotation[fcurve.array_index] = fcurve.evaluate(frame)
-                    rotmat = quat_rotation.to_matrix()
+                    rotmat_e = euler_rotation.to_matrix()
+                    # print("Frame, Euler: ", frame, fcurve.evaluate(frame), euler_rotation)
+                    # print("Rotmat: ", rotmat_e)
         mat = Matrix.Translation(location)
         # print("Reading loc: ", bone_name, frame, location)
         if rotmat is not None:
             rotmat.resize_4x4()
-            # print("rotmat: ", rotmat)
             mat = mat @ rotmat
+        if rotmat_e is not None:
+            rotmat_e.resize_4x4()
+            mat = mat @ rotmat_e
         posemat = pose_bone.id_data.convert_space(matrix=mat, pose_bone=pose_bone, from_space='LOCAL', to_space='POSE')
+        if bone_name == "foot_ik.L":
+            print("foundrotmat: ", frame)
+            print(mat)
+            print(posemat)
         return posemat
        
 #
@@ -216,11 +225,15 @@ class ARMATURE_OT_WalkUnpack(bpy.types.Operator):
                             for b in self.sIKBones:
                                 if '["' + b.name + '"]' in fcurve.data_path and b.name not in matrixDict:
                                     Bn = self.find_fcurve_matrix(ob, b.name, cyclic_action, cycleFrame)
-                                    matrixDict[b.name] = Bn.copy()
                                     R1 = rootMatrix0
                                     Rn = rootMatrix_n
                                     Bnew = Rn @ R1.inverted() @ Bn
                                     localmat = b.id_data.convert_space(matrix=Bnew, pose_bone=b, from_space='POSE', to_space='LOCAL')
+                                    matrixDict[b.name] = localmat.copy()
+                                    if b.name == "foot_ik.L":
+                                        print("Read mat: ")
+                                        print(Bn)
+                                        print(matrixDict[b.name])
 
                                     # print("Read IK pose matrix: ", frame, b.name, matrixDict[b.name].translation, Bnew.translation, localmat.translation )
                                     
@@ -230,11 +243,17 @@ class ARMATURE_OT_WalkUnpack(bpy.types.Operator):
                                 if  '["' + b.name + '"]' in fcurve.data_path:
                                     # print("Offset: ", (Rn @ R1.inverted()).translation)
                                     if ".location" in fcurve.data_path:
-                                        newKeyValue = localmat.translation[fcurve.array_index]
+                                        newKeyValue = matrixDict[b.name].translation[fcurve.array_index]
                                     if "_euler" in fcurve.data_path:
-                                        newKeyValue = localmat.to_euler()[fcurve.array_index]
+                                        newKeyValue = matrixDict[b.name].to_euler()[fcurve.array_index]
+                                        if b.name == "foot_ik.L":
+                                            print("Euler Value: ", newKeyValue)
+                                            print(matrixDict[b.name])
                                     if "_quaternion" in fcurve.data_path:
-                                        newKeyValue = localmat.to_quaternion()[fcurve.array_index]
+                                        newKeyValue = matrixDict[b.name].to_quaternion()[fcurve.array_index]
+                                        if b.name == "foot_ik.L":
+                                            print("Quat Value: ", newKeyValue)
+                                            print(matrixDict[b.name])
                             
                             #Prevent Foot slipping
                             #If enabled, for 'EXTREME' keyframe types, push keyframe value
@@ -255,7 +274,7 @@ class ARMATURE_OT_WalkUnpack(bpy.types.Operator):
                                         # print("Remove keyframe: ", fsindex)
                             #Insert the keyframe
                             newkeyframe = newfcurve.keyframe_points.insert(frame, newKeyValue)
-                            print("New, Old: ", newkeyframe.handle_left[1], keyframe.handle_left[1])
+                            # print("New, Old: ", newkeyframe.handle_left[1], keyframe.handle_left[1])
                             CopyKeyframeParams(newkeyframe, keyframe)
             rootMatrix_n = None
             matrixDict = {}
